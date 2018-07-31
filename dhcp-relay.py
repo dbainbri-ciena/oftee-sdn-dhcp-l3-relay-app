@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 from flask import Flask
 from flask_restful import Api, Resource, request
 import scapy.all as scapy
@@ -38,12 +39,18 @@ def responder():
             if scapy.BOOTP in p and p[scapy.UDP].dport == 68:
 
                 # Lookup DPID and port based on transaction ID
+                if p[scapy.BOOTP].xid not in xids:
+                    print "UNEXPECTED/UNKNOWN XID: %s" % p[scapy.BOOTP].xid
+                    sys.stdout.flush()
+                    continue
+
                 dpid,port,dst=xids[p[scapy.BOOTP].xid]
                 print "XID: %s [RESPONSE]" % p[scapy.BOOTP].xid
                 print "    DPID: 0x%s" % hex(dpid)
                 print "    PORT: %d" % port
                 print "    DST:  %s" % dst
                 print "    IP:   %s" % p[scapy.BOOTP].yiaddr
+                sys.stdout.flush()
 
                 # Set the DST to the client
                 p[scapy.Ether].dst = dst
@@ -71,6 +78,7 @@ def packet_in():
     print "    DPID: 0x%s" % hex(data[0:8])
     print "    PORT: %d" % num(data[8:12])
     print "    DST:  %s" % packet[scapy.Ether].src
+    sys.stdout.flush()
     xids[packet[scapy.BOOTP].xid] = (
             data[0:8],
             num(data[8:12]),
